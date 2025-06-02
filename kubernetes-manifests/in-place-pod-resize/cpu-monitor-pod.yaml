@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cpu-monitor
+  labels:
+    app: cpu-monitor
+spec:
+  containers:
+  - name: cpu-monitor
+    image: nginx:latest
+    command: ["/bin/sh", "-c"]
+    args:
+      - |
+        # Start nginx in background
+        nginx &
+        
+        # Install monitoring tools and stress tool
+        apt-get update && apt-get install -y procps stress bc htop
+        
+        # Start CPU stress in background
+        stress --cpu 2 --timeout 300s &
+        STRESS_PID=$!
+        echo "Started CPU stress test with PID: $STRESS_PID"
+        
+        # Monitor CPU usage while stress is running
+        while true; do
+          # Get CPU usage specifically for the container
+          CPU_USAGE=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}')
+          
+          # Get current CPU limits from cgroups
+          if [ -f /sys/fs/cgroup/cpu/cpu.cfs_quota_us ]; then
+            # cgroups v1
+            CPU_QUOTA=$(cat /sys/fs/cgroup/cpu/cpu.cfs_quota_us)
+            CPU_PERIOD=$(cat /sys/fs/cgroup/cpu/cpu.cfs_period_us)
+            if [ "$CPU_QUOTA" != "-1" ]; then
+              CURRENT_CPU_LIMIT=$(echo "scale=3; $CPU_QUOTA / $CPU_PERIOD * 1000" | bc)
+              echo "Current CPU Limit: ${CURRENT_CPU_LIMIT}m (from cgroups)"
+            else
+              echo "Current CPU Limit: unlimited (from cgroups)"
+            fi
+          elif [ -f /sys/fs/cgroup/cpu.max ]; then
+            # cgroups v2
+            CPU_MAX=$(cat /sys/fs/cgroup/cpu.max)
+            CPU_QUOTA=$(echo $CPU_MAX | cut -d' ' -f1)
+            CPU_PERIOD=$(echo $CPU_MAX | cut -d' ' -f2)
+            if [ "$CPU_QUOTA" != "max" ]; then
+              CURRENT_CPU_LIMIT=$(echo "scale=3; $CPU_QUOTA / $CPU_PERIOD * 1000" | bc)
+              echo "Current CPU Limit: ${CURRENT_CPU_LIMIT}m (from cgroups)"
+            else
+              echo "Current CPU Limit: unlimited (from cgroups)"
+            fi
+          else
+            echo "Cannot determine CPU limit from cgroups"
+          fi
+          
+          echo "Current CPU Usage: ${CPU_USAGE}%"
+          echo "Stress test running: $(ps -p $STRESS_PID > /dev/null && echo 'YES' || echo 'NO')"
+          echo "------------------------"
+          
+          # If stress test ended, start a new one
+          if ! ps -p $STRESS_PID > /dev/null; then
+            echo "Restarting stress test..."
+            stress --cpu 2 --timeout 300s &
+            STRESS_PID=$!
+          fi
+          
+          sleep 5
+        done
+    ports:
+    - containerPort: 80
+    resizePolicy:
+    - resourceName: cpu
+      restartPolicy: NotRequired
+    - resourceName: memory
+      restartPolicy: RestartContainer              
+    resources:
+      limits:
+        cpu: 200m
+        memory: 128Mi
+      requests:
+        cpu: 100m
+        memory: 64Mi
+
