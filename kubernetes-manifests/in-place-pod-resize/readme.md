@@ -19,16 +19,3 @@ kubectl patch pod cpu-monitor --subresource resize --patch \
 ```bash
 kubectl get pod cpu-monitor -o yaml | grep resources -A 2
 ```
-
-
-
-
-
-
-
-export REGION="eu-west-1"
-export key_pair="aws-wale"
-export LOCAL_SSH_KEY_FILE="~/.ssh/aws-wale.pem"
-export AWS_PROFILE=default
-export ANSIBLE_SERVER_PUBLIC_IP="$(aws ec2 describe-instances --filters "Name=tag-value,Values=ansible_controller_kubeadm_lab" "Name=instance-state-name,Values=running" --query 'Reservations[*].Instances[*].[PublicIpAddress]' --output text --region ${REGION})"
-ssh -i ${LOCAL_SSH_KEY_FILE} ubuntu@${ANSIBLE_SERVER_PUBLIC_IP}
