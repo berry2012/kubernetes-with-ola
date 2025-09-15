@@ -32,7 +32,7 @@ jobs:
           # soft_fail: true
 
       - name: Expose report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: success() || failure()
         with:
           name: SARIF results
