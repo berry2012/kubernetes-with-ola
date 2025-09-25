@@ -10,7 +10,7 @@
 3. Create a deployment file for vLLM to run the model server. The following example deploys the Mistral-7B-Instruct-v0.3 model:
 
 ```bash
-k apply -f ../direct
+k apply -f mistral-7b-v3-gpu.yaml
 ```
 
 4. Watch the pod creation
@@ -52,8 +52,7 @@ curl -w "time_namelookup: %{time_namelookup}, time_connect: %{time_connect}, tim
 ## Clean up
 
 ```bash
-k delete -f ../direct
-```
+k delete -f mistral-7b-v3-gpu.yaml
 
 ## Speed-up Pod Startup time
 
@@ -109,7 +108,7 @@ curl -w "time_namelookup: %{time_namelookup}, time_connect: %{time_connect}, tim
 ## Clean up
 
 ```bash
-k delete -f ../predownloaded
+k delete -f mistral-7b-v3-gpu.yaml
 ```
 
 
