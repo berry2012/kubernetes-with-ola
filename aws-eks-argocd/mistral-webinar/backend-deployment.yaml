@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meeting-summarizer-backend
+  labels:
+    app: meeting-summarizer-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: meeting-summarizer-backend
+  template:
+    metadata:
+      labels:
+        app: meeting-summarizer-backend
+    spec:
+      containers:
+      - name: backend
+        image: 520817024429.dkr.ecr.us-east-1.amazonaws.com/meeting-summarizer-backend:latest
+        ports:
+        - containerPort: 3001
+        env:
+        - name: LLM_ENDPOINT
+          value: "http://mistral/v1/chat/completions"
+        - name: MODEL_NAME
+          value: "mistralai/Mistral-7B-Instruct-v0.3"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: meeting-summarizer-backend-service
+spec:
+  selector:
+    app: meeting-summarizer-backend
+  ports:
+    - protocol: TCP
+      port: 3001
+      targetPort: 3001
+  type: ClusterIP

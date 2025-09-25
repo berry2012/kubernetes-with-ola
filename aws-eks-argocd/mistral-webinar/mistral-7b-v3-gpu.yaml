@@ -1,0 +1,125 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mistral
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/app-metrics: "true"
+    prometheus.io/port: "8080"
+  labels:
+    model: mistral
+spec:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    model: mistral
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mistral
+  labels:
+    model: mistral
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      model: mistral
+  template:
+    metadata:
+      labels:
+        model: mistral
+      annotations:
+        # Performance monitoring annotations
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      # QoS Class: Guaranteed (requests = limits for critical resources)
+      nodeSelector:
+        # GPU node selection - adjust based on your GPU instance types
+        owner: gpu-general  # or g4dn.2xlarge, p3.2xlarge, etc.
+        eks.amazonaws.com/compute-type: auto        
+      tolerations:
+        # GPU-specific tolerations
+        - effect: NoSchedule
+          key: nvidia.com/gpu
+          operator: Exists
+      containers:
+        - name: vllm
+          # Use official vLLM image with CUDA support
+          image: 520817024429.dkr.ecr.us-east-1.amazonaws.com/vllm-openai:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args: [
+             "vllm serve mistralai/Mistral-7B-Instruct-v0.3 --port 8080 --host 0.0.0.0 --trust-remote-code --enable-chunked-prefill --max_num_batched_tokens 1024"
+          ]    
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+              name: http
+          # OPTIMIZED RESOURCES for GPU deployment
+          resources:
+            limits:
+              cpu: 10               # Reduced CPU for GPU workload
+              memory: 20Gi         # Reduced memory as GPU handles model
+              nvidia.com/gpu: "1"  # Single GPU request
+            requests:
+              cpu: 2              # Slightly above requests for burst capacity
+              memory: 6Gi         # Reasonable limit with headroom
+              nvidia.com/gpu: "1"  # Single GPU limit
+          # HEALTH CHECKS - Critical for production
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 60    # Allow time for model loading
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 120   # Allow more time for initial startup
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          # STARTUP PROBE - For slow-starting containers
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 18       # 3 minutes total startup time
+          volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+            - mountPath: /root/.cache/huggingface
+              name: cache-volume
+          env:
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-token-secret
+                  key: token             
+      # GRACEFUL SHUTDOWN
+      terminationGracePeriodSeconds: 30  # Increased for proper cleanup
+      # vLLM needs to access the host's shared memory for tensor parallel inference.
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi  # INCREASED shared memory for higher concurrency
+        - name: cache-volume
+          emptyDir: {}

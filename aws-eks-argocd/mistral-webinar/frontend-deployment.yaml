@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meeting-summarizer-frontend
+  labels:
+    app: meeting-summarizer-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: meeting-summarizer-frontend
+  template:
+    metadata:
+      labels:
+        app: meeting-summarizer-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: 520817024429.dkr.ecr.us-east-1.amazonaws.com/meeting-summarizer-frontend:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: meeting-summarizer-frontend-service
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip  
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing        
+  labels:
+    app: meeting-summarizer-frontend
+spec:
+  selector:
+    app: meeting-summarizer-frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer

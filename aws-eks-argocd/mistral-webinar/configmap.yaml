@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: meeting-summarizer-config
+data:
+  LLM_ENDPOINT: "http://mistral/v1/chat/completions"
+  MODEL_NAME: "mistralai/Mistral-7B-Instruct-v0.3"
+  REACT_APP_API_BASE: "http://meeting-summarizer-backend-service:3001"
