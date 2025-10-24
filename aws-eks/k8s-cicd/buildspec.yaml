@@ -27,6 +27,7 @@ phases:
       - find infra/ -name "*.yaml" -type f -exec sed -i "s/ACCOUNT_ID/$ACCOUNT_ID/g" {} \;
       - find infra/ -name "*.yaml" -type f -exec sed -i "s/:latest/:$IMAGE_TAG/g" {} \;
       - echo Updated manifests with image $REPOSITORY_URI:$IMAGE_TAG
+      - cd ../ && ls -lrt
 
 artifacts:
   files:
