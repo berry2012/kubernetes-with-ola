@@ -64,7 +64,7 @@ metadata:
     alb.ingress.kubernetes.io/tags: Auto-delete=no
     ## SSL Settings
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}, {"HTTP":80}, {"HTTP": 8080}, {"HTTPS": 8443}]'
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-west-1:ACCOUNT_ID:certificate/fcc58e38-dbf0-4f55-9d0e-955da11d2da0
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-west-1:ACCOUNT_ID:certificate/b668b17d-004d-4568-bf24-f4811174e9f2
     alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06 #Optional (Picks default if not used)    
 spec:
   ingressClassName: alb
